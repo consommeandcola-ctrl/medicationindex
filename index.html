@@ -1,119 +1,331 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>Med Picker – 完成版（サンプル内蔵・安全パッチ）</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Med Picker v4.0</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
-  :root{ --bg:#f8fbff; --card:#fff; --ink:#0b0f14; --muted:#64748b; --line:#e5eaf0;
-         --accent:#2563eb; --accent-ink:#fff; --good:#e7f5ff; --bad:#ffe5e5; }
-  *{box-sizing:border-box}
-  html,body{height:100%; -webkit-text-size-adjust:100%}
-  body{margin:0;background:var(--bg);color:var(--ink);
-       font-family:-apple-system,system-ui,"SF Pro Text","Noto Sans JP",sans-serif;}
-  header{position:sticky;top:0;z-index:10;background:linear-gradient(#fff,rgba(255,255,255,.95));
-         border-bottom:1px solid var(--line);padding:10px 12px}
-  h1{font-size:18px;margin:0 0 8px}
-  input,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;background:#fff;color:#000}
-  .btn{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff;font:inherit}
-  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-  main{display:flex;flex-direction:column;gap:10px;padding:10px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;height:56vh;display:flex;flex-direction:column}
-  .card>header{padding:8px 12px;border-bottom:1px solid var(--line);font-weight:600}
-  .sec{flex:1;overflow:auto;padding:8px}
-  ul{list-style:none;margin:0;padding:0}
-  li.item{border-bottom:1px dashed var(--line);padding:8px 4px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-  .name{font-weight:700}
-  /* 常用薬リスト：本文を優先表示（黒／中止は赤） */
-  .chip{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px;
-        border:1px solid var(--line);border-radius:10px;background:#fff;margin:6px 0;padding:8px}
-  .chip.keep .text{color:#000}
-  .chip.stop .text{color:#b91c1c}
-  .ops .btn{padding:4px 8px;font-size:12px}
-  .facility{font-weight:700;margin:10px 0 4px}
-  dialog{width:calc(100% - 24px);max-width:700px;border:1px solid var(--line);border-radius:12px}
-  #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;
-         padding:10px 12px;border-radius:10px;opacity:0;transition:.25s}
-  #toast.show{opacity:.9}
+:root {
+  --bg:#f0f4f8; --card:#fff; --ink:#0b0f14; --muted:#64748b; --line:#e2e8f0;
+  --accent:#2563eb; --accent-light:#dbeafe; --accent-ink:#fff;
+  --good:#dcfce7; --good-ink:#166534;
+  --bad:#fee2e2; --bad-ink:#991b1b;
+  --warn:#fef3c7; --warn-ink:#92400e;
+  --highrisk:#fef3c7; --highrisk-border:#f59e0b;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink)}
+
+/* ===== ヘッダー ===== */
+header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--line);padding:12px 16px}
+.header-row{max-width:1400px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:20px;margin:0;white-space:nowrap}
+.search-box{flex:1;min-width:200px;max-width:400px;position:relative}
+.search-box input{width:100%;padding:12px 16px;border:2px solid var(--line);border-radius:12px;font-size:16px;transition:border-color .2s}
+.search-box input:focus{outline:none;border-color:var(--accent)}
+.inst-select{display:flex;align-items:center;gap:8px;background:var(--accent-light);padding:8px 12px;border-radius:10px;position:relative}
+.inst-select label{font-size:13px;color:var(--accent);font-weight:600;white-space:nowrap}
+.inst-select input{border:none;background:transparent;font-size:14px;font-weight:600;color:var(--accent);width:180px;outline:none}
+.inst-select input::placeholder{color:var(--accent);opacity:0.6}
+.inst-suggest{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:280px;overflow:auto;z-index:200;display:none}
+.inst-suggest.show{display:block}
+.inst-suggest-item{padding:10px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--line)}
+.inst-suggest-item:last-child{border-bottom:none}
+.inst-suggest-item:hover{background:var(--accent-light)}
+.inst-suggest-item.recent{color:var(--accent)}
+.inst-suggest-item.recent::before{content:'🕐 ';font-size:12px}
+.inst-clear{background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted);padding:0 4px}
+.inst-clear:hover{color:var(--ink)}
+.stat{font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* ===== 五十音（折りたたみ） ===== */
+.kana-panel{max-width:1400px;margin:0 auto;padding:8px 16px}
+.kana-panel summary{cursor:pointer;font-size:14px;color:var(--muted);user-select:none}
+.kana-panel summary:hover{color:var(--accent)}
+.kana-grid{display:grid;grid-template-columns:repeat(15,1fr);gap:4px;margin-top:10px}
+.kana-grid button{padding:10px 4px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.kana-grid button:hover:not(:disabled){background:var(--accent-light);border-color:var(--accent)}
+.kana-grid button:disabled{opacity:.3;cursor:default}
+.kana-grid .grp{grid-column:1/-1;font-size:11px;color:var(--muted);margin-top:6px}
+.kana-boxes{display:flex;gap:4px;margin-left:12px}
+.kana-boxes .box{width:32px;height:32px;border:2px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.kana-boxes .box.active{border-color:var(--accent);background:var(--accent-light)}
+.kana-tools{display:flex;gap:8px;margin-left:auto}
+@media(max-width:900px){.kana-grid{grid-template-columns:repeat(10,1fr)}}
+
+/* ===== メイン2カラム ===== */
+main{max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:1fr 1.2fr;gap:16px;min-height:calc(100vh - 140px)}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;overflow:hidden}
+.card-header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.card-header h2{margin:0;font-size:16px}
+.card-body{flex:1;overflow:auto;padding:12px}
+
+/* ===== タブ切り替え ===== */
+.tabs{display:flex;gap:4px}
+.tabs button{padding:8px 14px;border:none;background:transparent;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
+.tabs button.active{background:var(--accent);color:#fff}
+.tabs button:hover:not(.active){background:var(--line)}
+
+/* ===== 候補リスト ===== */
+.list{list-style:none;margin:0;padding:0}
+.list-item{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--line);transition:background .15s}
+.list-item:hover{background:#f8fafc}
+.list-item.highrisk{background:var(--highrisk);border-left:4px solid var(--highrisk-border)}
+.list-item .info{flex:1;min-width:0}
+.list-item .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ===== ボタン共通（タッチしやすい44px） ===== */
+.btn{min-height:44px;padding:10px 16px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:#f1f5f9}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.primary:hover{background:#1d4ed8}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:13px}
+.btn.icon{min-width:44px;padding:10px}
+.btn.fav{color:#f59e0b;border-color:#fcd34d}
+.btn.fav.active{background:#fef3c7}
+
+/* ===== クイック追加ボタン ===== */
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.quick-btns .btn{flex:1;min-width:60px}
+
+/* ===== 常用薬チップ ===== */
+.med-chip{display:flex;align-items:center;gap:10px;padding:12px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:#fff;transition:all .15s}
+.med-chip:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.med-chip.stop{background:var(--bad);border-color:#fca5a5}
+.med-chip.stop .chip-text{color:var(--bad-ink);text-decoration:line-through}
+.med-chip.highrisk{border-left:4px solid var(--highrisk-border)}
+.med-chip .badge{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;flex-shrink:0}
+.med-chip .badge.keep{background:var(--good);color:var(--good-ink)}
+.med-chip .badge.stop{background:var(--bad);color:var(--bad-ink)}
+.med-chip .chip-text{flex:1;font-size:13px;line-height:1.5;min-width:0}
+.med-chip .chip-actions{display:flex;gap:4px;flex-shrink:0}
+.med-chip .chip-actions .btn{min-height:36px;padding:6px 10px;font-size:12px}
+
+/* 施設見出し */
+.inst-header{font-size:14px;font-weight:700;color:var(--accent);margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+.inst-header:first-child{margin-top:0}
+
+/* ===== ダイアログ ===== */
+dialog{border:none;border-radius:16px;padding:0;max-width:500px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,.2)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.dlg-header{padding:16px 20px;border-bottom:1px solid var(--line);font-size:16px;font-weight:700}
+.dlg-body{padding:20px;display:grid;gap:16px}
+.dlg-footer{padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+
+.form-row{display:flex;align-items:center;gap:10px}
+.form-row label{min-width:70px;font-size:13px;color:var(--muted)}
+.form-row input,.form-row select{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--accent)}
+
+.stepper{display:inline-flex;align-items:center;gap:2px;background:var(--line);border-radius:10px;padding:2px}
+.stepper button{width:44px;height:44px;border:none;background:#fff;font-size:20px;font-weight:700;cursor:pointer;border-radius:8px}
+.stepper button:hover{background:#f1f5f9}
+.stepper input{width:60px;text-align:center;border:none;background:transparent;font-size:18px;font-weight:700}
+
+/* ===== トースト ===== */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#1e293b;color:#fff;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:all .3s ease;z-index:1000}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+#toast.success{background:#059669}
+
+/* ===== 空状態 ===== */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:14px}
+
+/* ===== アニメーション ===== */
+@keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:slideIn .25s ease}
 </style>
-<!-- iOS Safari 用 -->
-<link rel="apple-touch-icon" href="/medicationindex/apple-touch-icon.png">
-
-<!-- Android/Chrome 用 -->
-<link rel="manifest" href="/medicationindex/manifest.webmanifest">
-<meta name="theme-color" content="#2563eb">
-
 </head>
 <body>
+
 <header>
-  <h1>Med Picker 完成版</h1>
-  <input id="qFree" placeholder="フリガナ先頭3〜5文字（例: ｾﾎ / せぼふ / ロキ）" inputmode="kana" autocomplete="off">
-  <div id="stat" style="margin-top:6px;font-size:12px;color:#64748b"></div>
+  <div class="header-row">
+    <h1>💊 Med Picker v4</h1>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="薬名をカナで検索（例：アムロ）" autocomplete="off">
+    </div>
+    <div class="inst-select">
+      <label>🏥</label>
+      <input type="text" id="currentInstInput" placeholder="施設を入力..." autocomplete="off">
+      <button class="inst-clear" id="instClear" title="クリア">×</button>
+      <div class="inst-suggest" id="instSuggest"></div>
+    </div>
+    <span class="stat" id="stat">読込中...</span>
+  </div>
+  <div class="kana-panel">
+    <details id="kanaFold">
+      <summary>
+        五十音表で入力
+        <span class="kana-boxes" id="kanaBoxes"></span>
+        <span class="kana-tools">
+          <button class="btn sm" id="kanaBack">←戻す</button>
+          <button class="btn sm" id="kanaClear">クリア</button>
+        </span>
+      </summary>
+      <div class="kana-grid" id="kanaGrid"></div>
+    </details>
+  </div>
 </header>
 
 <main>
+  <!-- 左カラム：検索・お気に入り・履歴 -->
   <section class="card">
-    <header>候補</header>
-    <div class="sec"><ul id="cand"></ul></div>
-  </section>
-
-  <section class="card">
-    <header>トレー（確定前）</header>
-    <div class="sec"><ul id="tray"></ul></div>
-    <div style="padding:8px;text-align:right">
-      <button class="btn primary" id="trayCommit">→ 常用薬へ</button>
+    <div class="card-header">
+      <div class="tabs">
+        <button class="active" data-tab="search">🔍 検索結果</button>
+        <button data-tab="fav">⭐ お気に入り</button>
+        <button data-tab="recent">🕐 最近</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <ul class="list" id="candidateList"></ul>
     </div>
   </section>
 
+  <!-- 右カラム：常用薬リスト -->
   <section class="card">
-    <header>常用薬リスト</header>
-    <div class="sec" id="stable"></div>
-    <div style="padding:8px;text-align:right">
-      <button class="btn primary" id="copyAll">全部コピー</button>
+    <div class="card-header">
+      <h2>📋 常用薬リスト</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" id="clearAll">🗑 全削除</button>
+        <button class="btn sm" id="copyAll">📋 コピー</button>
+        <button class="btn sm primary" id="copyNext">✅ コピーして次へ</button>
+      </div>
     </div>
+    <div class="card-body" id="stableList"></div>
   </section>
 </main>
 
-<!-- ダイアログ：富士通風 UI（錠/量 → 分 → 時間帯 → 食前/食後）＋インスリン特別UI -->
-<dialog id="dlg">
-  <header style="padding:12px;border-bottom:1px solid var(--line)"><strong id="dlgTitle"></strong></header>
-  <div style="padding:12px;display:grid;gap:10px">
-    <div id="fujitsuArea"></div>
-    <input id="note" placeholder="備考（任意）">
-    <input id="inst" placeholder="処方医療機関（任意・漢字可）">
-    <div style="text-align:right;display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn" id="dlgCancel">キャンセル</button>
-      <button class="btn primary" id="dlgOk">OK</button>
+<!-- 用法ダイアログ -->
+<dialog id="doseDialog">
+  <div class="dlg-header" id="dlgTitle">薬剤名</div>
+  <div class="dlg-body">
+    <div style="background:var(--warn);padding:10px 14px;border-radius:8px;font-size:13px;display:none" id="dlgHighrisk">
+      ⚠️ <strong>ハイリスク薬</strong>：用量に注意してください
     </div>
+    
+    <div class="quick-btns">
+      <button class="btn" data-quick="morn">朝1錠</button>
+      <button class="btn" data-quick="eve">夕1錠</button>
+      <button class="btn" data-quick="bid">朝夕1錠</button>
+      <button class="btn" data-quick="tid">毎食後1錠</button>
+      <button class="btn" data-quick="bed">眠前1錠</button>
+    </div>
+    
+    <div id="normalDoseArea">
+      <div class="form-row">
+        <label>数量</label>
+        <div class="stepper">
+          <button type="button" id="qtyMinus">−</button>
+          <input type="number" id="qty" value="1" min="0">
+          <button type="button" id="qtyPlus">＋</button>
+        </div>
+        <select id="unit" style="width:80px">
+          <option>錠</option>
+          <option>カプセル</option>
+          <option>包</option>
+          <option>mL</option>
+          <option>g</option>
+          <option>枚</option>
+          <option>本</option>
+          <option>単位</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>分</label>
+        <select id="bun">
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>4</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>時間帯</label>
+        <select id="timing">
+          <option>（指定なし）</option>
+          <option>朝</option>
+          <option>昼</option>
+          <option>夕</option>
+          <option>朝夕</option>
+          <option>朝昼夕</option>
+          <option>眠前</option>
+          <option>起床時</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>食事</label>
+        <select id="meal">
+          <option>（指定なし）</option>
+          <option>食前</option>
+          <option>食直前</option>
+          <option>食後</option>
+          <option>食直後</option>
+          <option>食間</option>
+        </select>
+      </div>
+    </div>
+    
+    <div id="insulinDoseArea" style="display:none">
+      <div class="form-row" id="insulinRapidRow">
+        <label>朝</label><input type="number" id="insM" value="0" min="0" style="width:60px">
+        <label style="min-width:auto">昼</label><input type="number" id="insL" value="0" min="0" style="width:60px">
+        <label style="min-width:auto">夕</label><input type="number" id="insD" value="0" min="0" style="width:60px">
+        <span style="color:var(--muted)">単位</span>
+      </div>
+      <div class="form-row" id="insulinBasalRow" style="display:none">
+        <label>眠前</label>
+        <div class="stepper">
+          <button type="button" id="insBasalMinus">−</button>
+          <input type="number" id="insBed" value="0" min="0">
+          <button type="button" id="insBasalPlus">＋</button>
+        </div>
+        <span style="color:var(--muted)">単位</span>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <label>備考</label>
+      <input type="text" id="note" placeholder="例：7日分、腎機能で調整">
+    </div>
+  </div>
+  <div class="dlg-footer">
+    <button class="btn" id="dlgFav">⭐ お気に入り</button>
+    <div style="flex:1"></div>
+    <button class="btn" id="dlgCancel">キャンセル</button>
+    <button class="btn primary" id="dlgOk">追加</button>
+  </div>
+</dialog>
+
+<!-- 確認ダイアログ -->
+<dialog id="confirmDialog">
+  <div class="dlg-header">確認</div>
+  <div class="dlg-body">
+    <p id="confirmMsg">本当に削除しますか？</p>
+  </div>
+  <div class="dlg-footer">
+    <button class="btn" id="confirmNo">キャンセル</button>
+    <button class="btn primary" id="confirmYes">OK</button>
   </div>
 </dialog>
 
 <div id="toast"></div>
 
 <script>
-/* ======= サンプルCSV（ヘッダ＋数行） ======= */
-const EMBEDDED_CSV=`フリガナ,販売名,一般名
+/* ===== 埋め込みCSV ===== */
+const EMBEDDED_CSV = `フリガナ,販売名,一般名
 エキカアサンカチッソ,液化亜酸化窒素,亜酸化窒素
 コイケショウキ,小池笑気,亜酸化窒素
 マルワアサンカチッソ,マルワ亜酸化窒素,亜酸化窒素
 イソフルランキュウニュウマスイエキ,イソフルラン吸入麻酔液,イソフルラン
 ケタラールジョウチュウヨウ50mg,ケタラール静注用50mg,ケタミン塩酸塩
 ケタラールジョウチュウヨウ200mg,ケタラール静注用200mg,ケタミン塩酸塩
-ケタラールキンチュウヨウ500mg,ケタラール筋注用500mg,ケタミン塩酸塩
-セボフレンキュウニュウマスイエキ,セボフレン吸入麻酔液,セボフルラン
-セボフルランキュウニュウマスイエキ,セボフルラン吸入麻酔液,セボフルラン
-イソゾールチュウシャヨウ0.5g,イソゾール注射用0.5g,注射用チアミラールナトリウム
-チトゾールチュウヨウ0.3g,チトゾール注用0.3g,注射用チアミラールナトリウム
-チトゾールチュウヨウ0.5g,チトゾール注用0.5g,注射用チアミラールナトリウム
-ラボナールチュウシャヨウ0.3g,ラボナール注射用0.3g,注射用チオペンタールナトリウム
-ラボナールチュウシャヨウ0.5g,ラボナール注射用0.5g,注射用チオペンタールナトリウム
-スープレンキュウニュウマスイエキ,スープレン吸入麻酔液,デスフルラン
-ドロレプタンチュウシャエキ25mg,ドロレプタン注射液25mg,ドロペリドール
-1%ディプリバンチュウ,1%ディプリバン注,プロポフォール
-プロポフォール1%ジョウチュウ20mL,プロポフォール1%静注20mL,プロポフォール
-プロポフォール1%ジョウチュウ50mL,プロポフォール1%静注50mL,プロポフォール
-プロポフォール1%ジョウチュウ100mL,プロポフォール1%静注100mL,プロポフォール
-プロポフォールジョウチュウ1％20mL,プロポフォール静注1％20mL,プロポフォール
 ケタラールキンチュウヨウ500mg,ケタラール筋注用500mg,ケタミン塩酸塩
 セボフレンキュウニュウマスイエキ,セボフレン吸入麻酔液,セボフルラン
 セボフルランキュウニュウマスイエキ,セボフルラン吸入麻酔液,セボフルラン
@@ -8791,349 +9003,1897 @@ DTビック,DTビック,沈降ジフテリア破傷風混合トキソイド
 アネメトロテンテキジョウチュウエキ500mg,アネメトロ点滴静注液500mg,メトロニダゾール
 メファキンジョウ275,メファキン錠275,メフロキン塩酸塩
 メベンダゾールジョウ100,メベンダゾール錠100,メベンダゾール
+
 `;
 
-/* ======= Utils ======= */
-const $=s=>document.querySelector(s);
-const showToast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1200);}
-function escapeHtml(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function normalizeKana(s){if(!s) return '';s=s.normalize('NFKC').replace(/\s+/g,'');return s.replace(/[\u3041-\u3096]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60));}
-function headN(s,n){return normalizeKana(s).slice(0,n);}
-function parseCSV(text){
-  const lines=text.split(/\r?\n/).filter(l=>l.trim()); const out=[];
-  for(let i=0;i<lines.length;i++){
-    const a=lines[i].split(',');
-    if(i===0 && /フリガナ/.test(a[0])) continue;
-    out.push({kana:a[0]||'',hanbai:a[1]||'',ippan:a[2]||''});
-  } return out;
+/* 医療機関CSV */
+
+const INST_CSV = `ID,NAME
+1,竹元クリニック
+2,ニュータウン小児科
+3,伊敷台内科
+4,植村病院
+5,ナカノ在宅医療クリニック
+6,海江田外科
+7,外山内科クリニック
+8,桑畑整形外科クリニック
+9,耳鼻咽喉科村野クリニック
+10,上片平産婦人科内科
+11,徳田・馬場クリニック
+12,まつなが耳鼻咽喉科
+13,伊敷病院
+14,玉水会病院
+15,外園整形外科
+16,産婦人科・麻酔科 堂園クリニック
+17,中野内科医院
+18,整形外科・内科　玉里温泉クリニック
+19,しげのぶ内科クリニック
+20,坂下内科くりニック
+21,冨永内科
+22,なかむら整形外科クリニック
+23,玉里病院
+24,くわはたクリニック
+25,たついクリニック
+26,延寿堂クリニック
+27,植村病院
+28,久米田内科循環器内科
+29,ふじわら眼科
+30,吉井皮膚科
+31,貴島消化器内科器内科クリニック
+32,いいだクリニック
+33,あおぞら小児科
+34,きた眼科
+35,そうむた脳神経外科・糖尿病内科
+36,米沢病院
+37,藤田眼科
+38,メンタルホスピタル鹿児島
+39,アリーナサイド牧医院
+40,ますみクリニック
+41,小田代内科
+42,富村整形外科
+43,うのき眼科
+44,健三郎クリニック薬師
+45,アクラス中央病院
+46,永山医院
+47,野口内科
+48,整形外科 福村クリニック
+49,梅林クリニック
+50,西陵クリニック
+51,もりやま耳鼻咽喉科
+52,大坪こどもクリニック
+53,天神南クリニック
+54,三成会クリニック
+55,耳鼻咽喉科田上クリニック
+56,中野眼科
+57,貴島整形外科
+58,ひさどめ皮ふ科クリニック
+59,藤善整形外科
+60,徳永産婦人科
+61,つるどめクリニック
+62,こしのクリニック
+63,村山内科循環器科
+64,原良クリニック内科・循環器科
+65,岩下クリニック
+66,白石病院
+67,いまむら脳神経クリニック
+68,五反田内科クリニック
+69,野元ひふ科クリニック
+70,西田そよ風クリニック
+71,なおこ胃腸内科クリニック
+72,松本醫院
+73,白石記念クリニック
+74,白浜病院
+75,林内科胃腸科病院
+76,いこまクリニック
+77,三島クリニック
+78,今村泌尿器科
+79,宮田眼科鹿児島
+80,鹿児島中央駅西口消化器内科・胃大腸内視鏡クリニック
+81,鹿児島中央駅耳鼻日帰り手術クリニック
+82,東内科
+83,池田病院
+84,新村病院
+85,土橋病院
+86,猿渡ひふ科クリニック
+87,にしだクリニック
+88,豊平内科クリニック
+89,亀井メンタルクリニック
+90,しもたたら内科・消化器科
+91,こしゃクリニック
+92,春山クリニック
+93,前畠医院
+94,丸山整形外科
+95,鬼丸内科循環器科
+96,パールランド病院
+97,三州病院
+98,やまびこ医療福祉センター
+99,新山内科消化器科内科
+100,木村外科内科
+101,川畑内科クリニック
+102,脇丸医院
+103,おおぞのクリニック
+104,渡辺ファミリークリニック
+105,千年メディカルクリニック
+106,竹之内内科クリニック
+107,最勝寺内科
+108,尾辻クリニック内科胃腸科
+109,タウンズクリニック西村内科消化器科
+110,中尾内科胃腸内科
+111,鹿児島大学病院
+112,天辰病院
+113,桜ヶ丘内科胃腸科
+114,Tsukasa Health Care Hospital
+115,上原クリニック
+116,溝口内科医院
+117,鹿児島みなみ眼科
+118,豊島小児科
+119,吉福耳鼻咽喉科・皮膚科
+120,かめざわ整形外科
+121,ほりのうち内科
+122,八木クリニック
+123,中山クリニック
+124,耳鼻咽喉科おがわクリニック
+125,マミィクリニック伊集院
+126,ちゅうざん整形外科 ・内科・胃腸内科
+127,ちゅうざん皮ふ科
+128,にのみや小児科・ひふ科
+129,いまきいれ耳鼻咽喉科
+130,入来クリニック
+131,さかき脳神経外科
+132,谷山病院
+133,総合病院鹿児島生協病院
+134,川島病院
+135,三宅病院
+136,いとう整形外科クリニック
+137,谷山生協クリニック
+138,村木内科クリニック
+139,きやまクリニック
+140,児玉整形外科クリニック
+141,慈眼寺ひろみ皮膚科
+142,山下眼科クリニック
+143,じげんじ久保クリニック
+144,藤﨑クリニック
+145,生協往診クリニック
+146,ひなたクリニック
+147,谷山腎クリニック
+148,八重倉医院
+149,田原内科・循環器科
+150,野崎クリニック
+151,服部内科クリニック
+152,わきだ整形外科
+153,田中ひふ科医院
+154,産業保健メディカルクリニック
+155,油木田整形外科クリニック
+156,くらのメンタルクリニック
+157,萩原整形外科
+158,JINメンタルクリニック
+159,たびらウイメンズクリニック
+160,菅田眼科クリニック
+161,野上病院
+162,愛育病院
+163,レディースクリニックあいいく
+164,河井脳神経外科
+165,谷山川畑眼科
+166,生駒泌尿器科
+167,米良ひふ科クリニック
+168,ほかぞのクリニック
+169,徳永クリニック
+170,橋口整形外科
+171,山本耳鼻咽喉科
+172,在宅療養支援診療所 しもほんじ医院
+173,中野脳神経外科
+174,放射線科 田之畑クリニック
+175,光輪会鹿児島クリニック
+176,東開町眼科
+177,岡田・石堂クリニック
+178,稲森内科消化器科
+179,鹿児島徳洲会病院
+180,仁愛会病院
+181,鹿児島赤十字病院
+182,敬愛クリニック
+183,かわはら脳神経外科クリニック
+184,辻眼科クリニック
+185,原田クリニック
+186,鮫島クリニック
+187,すなお皮ふ科
+188,はっぴー・クリニック
+189,坂之上整形外科クリニック
+190,岩堀クリニック
+191,四本クリニック
+192,いうち耳鼻咽喉科
+193,井上小児科医院
+194,坂之上病院
+195,古川・石原クリニック
+196,福元医院
+197,喜入クリニック
+198,きいれ浜田クリニック
+199,生見クリニック
+200,あんびる病院
+201,池之上クリニック
+202,伊集院産婦人科
+203,石原山下整形外科内科医院
+204,今村クリニック
+205,整形外科みなと大通りクリニック
+206,シモノクリニック
+207,前田内科消化器科
+208,福元クリニック
+209,井後眼科
+210,健三郎クリニック
+211,鹿児島三井中央クリニック
+212,井上メンタルクリニック
+213,うえの内科・循環器内科クリニック
+214,さとみクリニック
+215,しぶや甲状腺クリニック
+216,吉満鈴木耳鼻咽喉科
+217,江川内科消化器科
+218,みのりクリニック
+219,野間口クリニック
+220,前田内科クリニック
+221,中村レディースクリニック
+222,中央病院
+223,天陽会中央クリニック
+224,慈愛会クリニック
+225,清泉クリニック整形外科
+226,いづろ今村病院
+227,整形外科山内クリニック
+228,さめしま眼科
+229,江川耳鼻咽喉科
+230,長嶺整形外科医院
+231,うのきクリニック
+232,久保皮膚科
+233,八反丸リハビリテーション病院
+234,鹿児島医療センター
+235,南風病院
+236,仁クリニック
+237,神田医院
+238,上の原在宅クリニック
+239,三船病院
+240,吉野病院
+241,横山記念病院
+242,花倉病院
+243,整形外科吉野台クリニック
+244,吉野眼科・中央歯科クリニック
+245,かばやま整形外科医院
+246,下川クリニック
+247,吉野生協クリニック
+248,四枝内科
+249,上別府内科消化器科
+250,松元整形外科
+251,宮田内科消化器科
+252,新牧医院
+253,くぼた内科クリニック
+254,かわもと記念クリニック
+255,上山クリニック
+256,折田胃腸科外科
+257,吉野東ホームクリニック
+258,たにもと耳鼻咽喉科クリニック
+259,いぢちこどもクリニック
+260,梅津整形外科医院
+261,明輝会クリニック
+262,さくら眼科
+263,よしの脳神経外科・消化器外科
+264,森口病院
+265,緑ヶ丘クリニック
+266,吉耳鼻咽喉科アレルギー科
+267,たけクリニック
+268,おおにし産婦人科
+269,吉田記念病院
+270,うえはらクリニック
+271,桜島病院
+272,濵島泌尿器科クリニック
+273,内科 甲南クリニック
+274,堂園メディカルハウス
+275,中洲整形外科
+276,武井内科クリニック
+277,とも甲状腺クリニック
+278,平和会クリニック
+279,前田病院
+280,桜花心療クリニック
+281,松村医院
+282,中江産婦人科
+283,井料メンタルクリニック
+284,大山クリニック
+285,野口クリニック
+286,耳鼻咽喉科ミック
+287,ヲサメ内科クリニック
+288,きじま内科
+289,内科・消化器内科 勝山クリニック
+290,山口克也内科
+291,鹿児島園田眼科?形成外科
+292,らららこどもクリニック
+293,中央駅眼科
+294,かごしま中央眼科クリニック
+295,鹿児島中央整形外科スポーツクリニック
+296,アエールこころのクリニック
+297,内科柴田病院
+298,有村眼科
+299,皮ふ科内宮医院
+300,ゆみレディースクリニック
+301,山口浩士クリニック 内科・循環器内科
+302,相良病院
+303,さんクリニック竹ノ下
+304,済生会鹿児島病院
+305,神園医院
+306,唐仁原医院
+307,岩尾病院
+308,ことといクリニック
+309,リバーサイドふくだクリニック
+310,さがらパース通りクリニック
+311,石塚レディースクリニック
+312,厚地リハビリテーション病院
+313,かつらクリニック
+314,厚地記念クリニック（PET画像診断センター）
+315,照國クリニック
+316,内村整形外科
+317,厚地脳神経外科病院
+318,﨑元病院
+319,メンタルヘルスかごしま中央クリニック
+320,プリムラクリニック
+321,西内科循環器科
+322,酒瀬川眼科クリニック
+323,西蔭メディカルクリニック
+324,天文館クリニック
+325,エンジェルハートクリニック
+326,沖野循環器科病院
+327,かごしま高岡病院
+328,中江病院
+329,日高病院
+330,整形外科たきしたクリニック
+331,高見馬場山口クリニック
+332,伊佐敷眼科医院
+333,三月田クリニック
+334,竹ファミリー内科クリニック
+335,ラグーナ診療所
+336,かごしまIBD消化器内科クリニック
+337,日暮里眼科クリニック鹿児島天文館院
+338,小田原病院
+339,増田クリニック
+340,片瀬クリニック
+341,さめしま小児科
+342,国東内科小児科
+343,ながはまクリニック
+344,瀬戸山クリニック
+345,中村(哲)産婦人科・内科
+346,柿木病院
+347,鮫島病院
+348,すみクリニック
+349,高見馬場Junクリニック
+350,やまだメンタルクリニック
+351,整形外科加治屋町クリニック
+352,はやかわ循環器内科クリニック
+353,西田橋小田原病院
+354,夜間休日診療所 キタゾノクリニック
+355,ヲサメ病院
+356,キラメキテラスヘルスケアホスピタル
+357,いまきいれ総合病院
+358,高麗町クリニック
+359,わきた内科・脳神経内科
+360,産科婦人科のぼり病院
+361,小田代病院
+362,高木耳鼻咽喉科
+363,東・うえまつクリニック
+364,大塚クリニック
+365,荒田ひふ科クリニック
+366,迫田晃郎クリニック
+367,小田代リハ整形外科クリニック
+368,アリス形成外科クリニック
+369,いわや内科・内視鏡クリニック
+370,Yメンタルクリニック
+371,新成病院
+372,鹿児島市立病院
+373,たちばないいやまクリニック
+374,よしながウイメンズクリニック
+375,なかのクリニック
+376,さくらクリニック
+377,平野エンゼルクリニック
+378,森元整形外科
+379,かねこクリニック
+380,はぁと診療所
+381,ひらやま脳神経外科
+382,いわした内科おなか診療所
+383,かわかみこどもクリニック
+384,豊島病院
+385,坂元内科胃腸科
+386,しんがみ内科クリニック
+387,うるた内科
+388,有馬新一クリニック
+389,たばたメンタルクリニック
+390,たけのはし大山医院
+391,坂元眼科
+392,やはたウィメンズクリニック
+393,うしかい耳鼻咽喉科クリニック
+394,天保山内科
+395,米盛病院
+396,鹿児島厚生連病院
+397,有馬・藤島内科クリニック
+398,テスト用の医療機関
+399,与次郎米盛クリニック
+400,榮樂内科クリニック
+401,片平整形外科
+402,よしのぶクリニック
+403,かもいけ耳鼻咽喉科クリニック
+404,中川クリニック
+405,鹿児島市夜間急病センター
+406,内科・山口アーバンクリニック
+407,おけたにクリニック
+408,ささきクリニック
+409,今村総合病院
+410,鹿児島市医師会病院
+411,鴨池ハイムクリニック
+412,鴨池生協クリニック
+413,かごしまオハナクリニック
+414,三愛病院
+415,増田整形外科病院
+416,隆成会病院
+417,SKメディカルクリニック
+418,川畑隼夫眼科医院
+419,三愛クリニック
+420,東クリニック
+421,健翔会病院
+422,かごしまたんぽぽ小児科
+423,厚地かもいけクリニック
+424,共立病院
+425,南鹿児島さくら病院
+426,南郡元在宅医療クリニック
+427,リハビリホスピタル三愛
+428,大勝病院
+429,七波クリニック
+430,黒木耳鼻咽喉科
+431,中島リウマチ膠原病・腎クリニック
+432,平川外科内科医院
+433,うすき整形外科病院
+434,三州脇田丘病院
+435,上山病院
+436,新杏クリニック
+437,大山眼科医院
+438,島田ひふ科
+439,田村クリニック
+440,吉村眼科
+441,上ノ町・加治屋クリニック
+442,うえやま腎クリニック
+443,川原泌尿器科
+444,今村小児科アレルギー科
+445,ふるたクリニック
+446,まごころ内科クリニック
+447,あいこう皮フ科クリニック
+448,ゆあさこどもクリニック
+449,うすきクリニック
+450,スリジエこころのクリニック
+451,菜の花こころの診療所
+452,栃木隆男クリニック
+453,宇宿うのき眼科
+454,尾辻病院
+455,内科・循環器内科 きはらハートクリニック
+456,わたなべ医院
+457,宮路胃腸科内科クリニック
+458,うえの耳鼻咽喉科クリニック
+459,紫原生協クリニック
+460,紫原たはら医院
+461,桑原眼科
+462,とよやまクリニック
+463,紫原林医院
+464,田中整形外科クリニック
+465,しょこらクリニック
+466,ませだ耳鼻咽喉科
+467,小川耳鼻咽喉科
+468,ふくやま整形外科
+469,指宿竹元病院
+470,指宿浩然会病院
+471,今林整形外科病院
+472,西田病院
+473,伊藤記念病院
+474,指宿さがら病院
+475,指宿医療センター
+476,山川病院
+477,赤崎病院
+478,肥後内科クリニック
+479,宮薗クリニック
+480,メディポリス国際陽子線治療センター
+481,幸南クリニック
+482,池田診療所
+483,永田耳鼻咽喉科医院
+484,福元医院
+485,南記念クリニック
+486,北薗産婦人科クリニック
+487,いぶすき内科
+488,クリニックリハビリ菜の花
+489,宇宿ひふ科クリニック
+490,指宿おおしげ内科
+491,上村内科クリニック
+492,こどもの森小児科クリニック
+493,指宿脳神経外科
+494,いわもと耳鼻咽喉科クリニック
+495,高橋眼科医院
+496,木之下クリニック
+497,小吉胃腸科クリニック
+498,岩下眼科医院
+499,生駒外科医院
+500,大重内科
+501,肥後胃腸科クリニック
+502,濵田洋一郎医院
+503,開聞クリニック
+504,中村温泉病院
+505,菊野病院
+506,南薩ケアほすぴたる
+507,こだま病院
+508,南九州さくら病院
+509,川辺生協クリニック
+510,笹川医院
+511,青木医院
+512,川平内科
+513,TEALANすこやかクリニック
+514,ちらんクリニック
+515,鯵坂耳鼻咽喉科
+516,橋口皮膚科
+517,内匠眼科
+518,かりや内科クリニック
+519,かわなべ共立内科
+520,上原整形外科クリニック
+521,まつやまクリニック
+522,南九州サザン・クリニック
+523,小田代記念クリニック
+524,松岡救急クリニック
+525,きわきクリニック
+526,加世田病院
+527,鹿児島県立 薩南病院
+528,南さつま中央病院
+529,有馬病院
+530,真愛病院
+531,南さつま市立坊津病院
+532,阿多病院
+533,友松内科クリニック
+534,持冨皮ふ科
+535,吉井クリニック
+536,加藤小児科内科
+537,羽牟クリニック
+538,ふくいわ耳鼻咽喉科クリニック
+539,アルテンハイムリハビリテーションクリニック本町
+540,徳久整形外科
+541,なかやま脳神経外科
+542,はしぐちクリニック
+543,加世田シティー内匠眼科
+544,唐仁原内科クリニック
+545,真愛クリニック
+546,眼科安田クリニック
+547,金子医院
+548,松岡医院
+549,大迫クリニック
+550,南さつま市野間池診療所
+551,南さつま市笠沙診療所
+552,吉見医院
+553,南さつま市秋目診療所
+554,小山クリニック
+555,宮内クリニック
+556,西田医院
+557,酒瀬川医院
+558,小原病院
+559,久木田整形外科病院
+560,園田病院
+561,サザン・リージョン病院
+562,尾辻病院
+563,枕崎市立病院
+564,立神リハビリテーション温泉病院
+565,ウエルフェア九州病院
+566,枕崎こどもクリニック
+567,国見内科医院
+568,みなとクリニック
+569,神園ひふ科クリニック
+570,森産婦人科
+571,松山医院
+572,有山内科
+573,茅野内科医院
+574,花牟禮病院
+575,丸田病院
+576,南洲整形外科病院
+577,いちき串木野市医師会立脳神経外科センター
+578,金子病院
+579,みなと病院
+580,産科・婦人科 久米クリニック
+581,いとう耳鼻咽喉科
+582,藤井クリニック
+583,春田クリニック
+584,宮之原循環器内科
+585,ふくもと整形外科･内科クリニック
+586,えんでん内科クリニック
+587,リミ眼科
+588,串木野内科・循環器科
+589,勝目眼科
+590,さゆりクリニック
+591,野辺ひふ科クリニック
+592,まきのせ泌尿器科
+593,牧野医院
+594,しもむぎ耳鼻咽喉科
+595,市来内科・ひふ科
+596,新山内科医院
+597,ふじいクリニック串木野
+598,京町内科・脳神経クリニック
+599,湯田内科病院
+600,前原総合医療病院
+601,博悠会温泉病院
+602,本庄病院
+603,伊集院病院
+604,守屋病院
+605,鹿児島こども病院
+606,馬場病院
+607,大石医院
+608,新山皮膚泌尿器科
+609,浅谷小児科医院
+610,じんごあん整形外科内科クリニック
+611,康生クリニック
+612,うちやま眼科クリニック
+613,永浜小児科内科
+614,橋本耳鼻咽喉科
+615,黒岩整形外科内科
+616,黒岩眼科
+617,いじゅういん脳神経外科
+618,久保内科
+619,清田耳鼻咽喉科
+620,たもつクリニック
+621,松崎内科ひふ科
+622,ひおき診療所
+623,みゆきクリニック
+624,しいの内科クリニック
+625,山之内クリニック
+626,吹上クリニック
+627,前原やすしクリニック
+628,くすもと産婦人科
+629,伊作田診療所
+630,百花クリニック
+631,まえはら温泉クリニック
+632,三島村立硫黄島へき地診療所
+633,三島村立黒島へき地診療所
+634,三島村立大里へき地診療所
+635,三島村立竹島へき地診療所
+636,十島村立口之島診療所
+637,十島村立中之島診療所
+638,十島村立平島診療所
+639,十島村立諏訪之瀬島診療所
+640,十島村立悪石島診療所
+641,十島村立小宝島診療所
+642,十島村立宝島診療所
+643,脇本病院
+644,出水郡医師会広域医療センター
+645,内山病院
+646,黒木医院
+647,しみずこども医院
+648,植村整形外科
+649,有村産婦人科・内科
+650,阿久根眼科
+651,北国医院
+652,山田クリニック
+653,林胃腸科外科
+654,鶴見医院
+655,いまむらクリニック
+656,阿久根市国民健康保険大川診療所
+657,出水総合医療センター
+658,出水病院
+659,吉井整形外科内科中央病院
+660,出水郡医師会立第二病院介護医療院
+661,荘記念病院
+662,境田医院
+663,東医院
+664,整形外科ばばぐちクリニック
+665,林泌尿器科クリニック
+666,つかさとクリニック
+667,市川医院
+668,広瀬産婦人科医院
+669,出水眼科
+670,三慶医院
+671,吉田耳鼻咽喉科医院
+672,にのみやこどもクリニック
+673,福永内科循環器科
+674,クリニック．なかむら
+675,わかすぎ皮フ科クリニック
+676,西出水眼科
+677,しもぞのクリニック
+678,せき耳鼻咽喉科クリニック
+679,よう皮ふ科医院
+680,楠元内科医院
+681,さくら通りクリニック
+682,こどもクリニック永松
+683,出水総合医療センター高尾野診療所
+684,出水総合医療センター野田診療所
+685,前田こころとからだのクリニック
+686,米ノ津メンタルクリニック
+687,平田整形外科クリニック
+688,福田クリニック
+689,キッズクリニック
+690,高江記念病院
+691,上村病院
+692,若松記念病院
+693,伊達病院
+694,中郷病院
+695,済生会川内病院
+696,森園病院
+697,永井病院
+698,卓翔会記念病院
+699,ファミリーHP薩摩
+700,川内市医師会立市民病院
+701,坂口医院
+702,Kメンタルクリニック
+703,虹クリニック
+704,徳田整形外科クリニック
+705,川路クリニック
+706,宮崎小児科
+707,田島産婦人科
+708,柳田胃腸科内科医院
+709,ひらさ内科
+710,川原クリニック
+711,川野眼科
+712,山下医院
+713,福山内科
+714,ひがしクリニック
+715,日高内科クリニック
+716,整形外科こざくらクリニック
+717,ときとうクリニック
+718,河村医院産婦人科内科
+719,関小児科医院
+720,上小鶴外科胃腸科
+721,上村内科・神経内科
+722,岩切眼科
+723,かみむら耳鼻咽喉科
+724,今村クリニック
+725,川内脳神経外科
+726,おやまクリニック
+727,岩﨑胃腸科
+728,大海整形外科
+729,新門リハビリテーションクリニック
+730,新門整形外科
+731,大海クリニック
+732,川内こどもクリニック
+733,具志ひふ科クリニック
+734,森田内科医院
+735,愛甲医院
+736,手塚医院
+737,中山クリニック
+738,かわばた皮膚科
+739,せんだい耳鼻咽喉科
+740,川島医院
+741,祁答院診療所
+742,わかばクリニック
+743,クリニックのぞみ
+744,薩摩川内市里診療所
+745,薩摩川内市上甑診療所
+746,薩摩川内市鹿島診療所
+747,薩摩川内市下甑長浜診療所
+748,薩摩川内市下甑手打診療所
+749,浜田医院
+750,あおぞら内科クリニック
+751,こがひさお眼科クリニック
+752,川内まきのせ泌尿器科
+753,有村眼科
+754,中郷の杜クリニック
+755,ありむら糖尿病・甲状腺・内科クリニック
+756,松尾医院
+757,有村医院
+758,山本耳鼻咽喉科
+759,愛宕山診療所
+760,クイーンズ乳腺クリニック
+761,大海宮崎クリニック
+762,久留医院
+763,市比野温泉医院
+764,稲津内科病院
+765,クオラリハビリテーション病院
+766,宮之城病院
+767,薩摩郡医師会病院
+768,立志クリニック
+769,てらだ内科クリニック
+770,海江田医院
+771,相良医院
+772,林田内科
+773,すずき耳鼻咽喉科
+774,溝口整形外科
+775,小緑内科
+776,うかり眼科
+777,さつまクリニック
+778,島田医院
+779,鬼丸整形外科
+780,ますざき医院
+781,長島町国民健康保険平尾診療所
+782,長島クリニック
+783,長島町国民健康保険鷹巣診療所
+784,高野医院
+785,長島町獅子島へき地診療所
+786,大口病院
+787,整形外科松元病院
+788,寺田病院
+789,鹿児島県立 北薩病院
+790,水間病院
+791,むらたクリニック
+792,有村クリニック
+793,土屋眼科
+794,大保・川添クリニック
+795,松元クリニック
+796,寺師医院
+797,日高内科
+798,貴嶋眼科
+799,なかむら産婦人科
+800,三浦医院
+801,菱刈中央医院
+802,つよしクリニック
+803,坂元内科
+804,さわたりクリニック
+805,古川医院
+806,大井病院
+807,フィオーレ第一病院
+808,加治木整形外科病院
+809,ザ王病院
+810,加治木記念病院
+811,加治木温泉病院
+812,南九州病院
+813,青雲会病院
+814,クオラリハビリテーション病院あいら
+815,希望ヶ丘病院
+816,鹿児島県立 姶良病院
+817,田園パークホスピタル
+818,あおい皮膚科クリニック
+819,やまのクリニック
+820,徳重クリニック
+821,なかむら小児科
+822,西眼科医院
+823,医療法人川畑内科医院
+824,松下亮治内科
+825,四本信一皮膚科
+826,浜崎クリニック
+827,加治木中央クリニック
+828,吉留クリニック
+829,内倉医院
+830,山下わたる内科
+831,ながた脳神経外科
+832,たかひろ眼科
+833,竹内レディースクリニック
+834,ひふ科形成外科西クリニック
+835,いわつぼ耳鼻咽喉科・めまいクリニック
+836,徳重医院
+837,たけうちクリニック
+838,よしだ内科クリニック
+839,川原泌尿器科クリニック
+840,荒武整形外科クリニック
+841,田中眼科
+842,こまき内科循環器科クリニック
+843,姶良市立北山診療所
+844,錦江クリニック
+845,でぐち耳鼻咽喉科
+846,やなせ整形外科
+847,尾田内科胃腸科
+848,中馬クリニック
+849,帖佐こどもクリニック
+850,立花こどもクリニック
+851,帖佐いなだクリニック
+852,クリニック１にしあいら
+853,こどもとアレルギーのクリニック　けいあいら
+854,あいら糖尿病・甲状腺・内科クリニック
+855,せいあいクリニック
+856,あいら中央眼科
+857,加治木メンタルクリニック
+858,伊地知医院
+859,あいら中川整形外科
+860,ほほ笑み在宅医療クリニック
+861,姶良しんさとクリニック
+862,まきお内科・整形外科
+863,奈ほ美在宅クリニック
+864,霧島杉安病院
+865,霧島記念病院
+866,国分中央病院
+867,国分生協病院
+868,協愛病院
+869,福山病院
+870,医療福祉センターオレンジ学園
+871,ハートフル隼人病院
+872,松下病院
+873,隼人尚愛会病院
+874,隼人温泉病院
+875,霧島市立医師会医療センター
+876,霧島桜ヶ丘病院
+877,霧島整形外科病院
+878,国分脳神経外科病院
+879,牧之原診療所
+880,清水内科
+881,浜田医院
+882,青葉クリニック
+883,清水整形外科
+884,井料クリニック
+885,三輪クリニック
+886,うえぞの内科クリニック
+887,帖佐クリニック
+888,ふたばクリニック小児科・皮膚科
+889,前田産婦人科クリニック
+890,原口内科消化器科
+891,こうの子どもクリニック
+892,原口耳鼻咽喉科
+893,石塚内科・胃腸内科
+894,とくしげ耳鼻咽喉科
+895,霧島眼科
+896,宮内皮ふ科クリニック
+897,鵜木医院
+898,はやと整形外科分院
+899,高倉眼科
+900,きたはらこどもクリニック
+901,プライマリ・ケアむろ内科
+902,国分外科胃腸科
+903,いぢち眼科
+904,中川整形外科
+905,江口整形外科
+906,国分脳神経外科クリニック
+907,かのう医院
+908,八木クリニック
+909,医療法人　永田医院
+910,はやと整形外科
+911,たまいクリニック
+912,隼人脳神経外科
+913,森クリニック呼吸器科・内科
+914,原口外科
+915,たぐち内科医院
+916,かわの小児科
+917,永山医院
+918,日当山温泉東洋医学クリニック
+919,整形外科酒匂クリニック
+920,吉満内科クリニック
+921,隼人福島眼科
+922,浜崎医院
+923,島田泌尿器科医院
+924,椎原眼科医院
+925,みつお産婦人科
+926,吉玉リウマチ・内科クリニック
+927,山下内科クリニック
+928,伊東内科クリニック
+929,林内科
+930,佐藤医院
+931,壱岐医院
+932,とくだクリニック
+933,徳永医院
+934,春田医院
+935,大庭医院
+936,きりしま内科リハビリクリニック
+937,隼人の杜クリニック
+938,みはらクリニック
+939,はやと形成外科クリニック
+940,はやし内科クリニック
+941,八反田内科
+942,あんず東洋医学クリニック
+943,霧島整形外科クリニック
+944,きくち内科・糖尿病クリニック
+945,そらまえクリニック
+946,ひめぎケアクリニック
+947,高千穂診療所
+948,梶原内科
+949,田中内科消化器科
+950,隼人メディカルクリニック
+951,あいらの森ホスピタル
+952,くりの後庵クリニック
+953,前田医院
+954,ひらしまクリニック
+955,林内科医院
+956,徳田脳神経外科病院
+957,井ノ上病院
+958,県民健康プラザ 鹿屋医療センター
+959,鹿屋ひ尿器科
+960,大隅鹿屋病院
+961,恒心会おぐら病院
+962,かのや東病院
+963,池田病院
+964,メンタルホスピタル鹿屋
+965,西原保養院
+966,桜ヶ丘病院
+967,平和台病院
+968,鮫島整形外科医院
+969,こだま共立クリニック
+970,フクダ医院
+971,検見崎クリニック
+972,前田内科
+973,桑波田産婦人科
+974,いしかわ耳鼻咽喉科
+975,大隅広域夜間急病センター
+976,浜崎クリニック
+977,平瀬外科・耳鼻咽喉科
+978,せぐち整形外科
+979,寺﨑皮膚科
+980,あべまつ眼科医院
+981,えとう小児科
+982,ひろた耳鼻咽喉科
+983,井上眼科
+984,鹿屋ハートセンター
+985,王産婦人科医院
+986,やのファミリークリニック
+987,寿レディースクリニック
+988,おばま医院
+989,おひさまこどもクリニック
+990,はるしま整形外科クリニック
+991,鹿屋在宅支援診療所
+992,園田クリニック
+993,いわもと耳鼻咽喉科医院
+994,そえじまクリニック
+995,こだま小児科
+996,長﨑内科
+997,たんぽぽクリニック
+998,ひらばるクリニック
+999,みやぞのクリニック
+1000,村上整形外科医院
+1001,小林クリニック
+1002,末次内科循環器科
+1003,中塩医院
+1004,おおうら皮ふ科
+1005,ゆうあいクリニック
+1006,小浜クリニック
+1007,吾平クリニック
+1008,内村産婦人科
+1009,黎明脳神経外科医院
+1010,グリーンバードクリニック
+1011,大手町クリニック
+1012,的場クリニック
+1013,まちのお医者さん
+1014,しんみょうず内科・脳神経内科
+1015,音和クリニック
+1016,垂水市立医療センター  垂水中央病院
+1017,ふくまる皮フ科クリニック
+1018,池田温泉クリニック
+1019,相良整形外科
+1020,桑波田診療所
+1021,よしとみクリニック
+1022,花田整形外科・リウマチ科医院
+1023,東内科小児科クリニック
+1024,財部記念病院
+1025,昭南病院
+1026,曽於医師会立病院
+1027,中島病院
+1028,高原病院
+1029,財部中央医院
+1030,まえかわクリニック
+1031,加藤内科クリニック
+1032,津曲胃腸科整形外科
+1033,曽於市立恒吉地区診療所
+1034,末吉胃腸科外科クリニック
+1035,塩川医院
+1036,耳鼻咽喉科末吉中央クリニック
+1037,尾郷クリニック
+1038,松岡救急クリニック分院
+1039,鮫島クリニック
+1040,大山病院
+1041,病院芳春苑
+1042,志布志中央クリニック
+1043,藤後クリニック
+1044,陽春堂内科診療所
+1045,山口内科
+1046,手塚クリニック
+1047,えびはら皮ふ科
+1048,しぶし眼科
+1049,松下医院
+1050,はまさき耳鼻咽喉科
+1051,石神診療所
+1052,びろうの樹整形外科
+1053,ひろた小児科
+1054,びろうの樹脳神経外科
+1055,みやじクリニック
+1056,山下クリニック
+1057,さくらやまクリニック
+1058,坂元内科クリニック
+1059,はるびゅうクリニック
+1060,山路医院
+1061,新中須医院
+1062,春陽会中央病院
+1063,肝付町立病院
+1064,山内クリニック
+1065,吉川医院
+1066,高山胃腸科・外科
+1067,ルミコ医療ステーション
+1068,高山クリニック
+1069,吉重クリニック
+1070,岸良診療所
+1071,肝属郡医師会立病院
+1072,錦江町宿利原巡回診療所
+1073,錦江町池田へき地診療所
+1074,藤崎クリニック
+1075,濵畑クリニック
+1076,大根占医院
+1077,津崎医院
+1078,南大隅町立佐多診療所
+1079,南大隅町立辺塚へき地出張診療所
+1080,南大隅町立郡へき地出張診療所
+1081,南大隅町立大泊へき地出張診療所
+1082,せいざん病院
+1083,公立種子島病院
+1084,種子島医療センター
+1085,田上診療所
+1086,種子島産婦人科医院
+1087,中種子クリニック
+1088,高岡医院
+1089,百合砂診療所
+1090,屋久島徳洲会病院
+1091,屋久島町立永田へき地出張診療所
+1092,和田医院
+1093,小瀬田みんなの診療所
+1094,仲医院
+1095,屋久島尾之間診療所
+1096,屋久島町栗生診療所
+1097,一湊出張診療所
+1098,やくしま森の診療所
+1099,鹿児島県立 大島病院
+1100,奄美中央病院
+1101,奄美病院
+1102,大島郡医師会病院
+1103,名瀬徳洲会病院
+1104,笠利病院
+1105,瀬戸内徳洲会病院
+1106,大島保養院
+1107,国立療養所 奄美和光園
+1108,きよし小児科
+1109,益田泌尿器科医院
+1110,むかいクリニック
+1111,よしかわクリニック
+1112,ファミリークリニック ネリヤ
+1113,朝沼クリニック
+1114,ささはらメンタルクリニック
+1115,屋宮医院
+1116,岩城眼科
+1117,メンタルクリニックMateria（マテリア）
+1118,せきクリニック
+1119,いい・かねゆきクリニック
+1120,奄美眼科
+1121,かずや内科
+1122,まさや眼科
+1123,風間内科胃腸科
+1124,記念クリニック奄美
+1125,奄美市笠利国民健康保険診療所
+1126,奄美市住用国民健康保険診療所
+1127,国民健康保険大和診療所
+1128,今里へき地出張診療所
+1129,国民健康保険宇検診療所
+1130,いづはら医院
+1131,南大島診療所
+1132,瀬戸内町へき地診療所
+1133,瀬戸内町国民健康保険池地診療所
+1134,瀬戸内町与路へき地診療所
+1135,竜郷中央クリニック
+1136,肥後診療所
+1137,肥後医院
+1138,SRT心クリニック
+1139,稲医院
+1140,郡山眼科医院
+1141,つばたファミリークリニック
+1142,徳之島病院
+1143,宮上病院
+1144,徳之島徳洲会病院
+1145,くらもと眼科医院
+1146,天城診療所
+1147,いなだ整形・内科クリニック
+1148,あまぎユイの里医療センター
+1149,徳之島診療所
+1150,伊仙クリニック
+1151,沖永良部徳洲会病院
+1152,朝戸医院
+1153,福山医院
+1154,大蔵医院
+1155,本部医院
+1156,町田医院
+1157,与論徳洲会病院
+1158,龍美クリニック
+1159,パナウル診療所
+1160,喜界徳洲会病院
+
+`;
+
+/* ===== ユーティリティ ===== */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const toast = (msg, success = false) => {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = success ? 'show success' : 'show';
+  setTimeout(() => t.className = '', 2000);
+};
+
+function normalizeKana(s) {
+  if (!s) return '';
+  s = s.toString().normalize('NFKC').replace(/\s+/g, '');
+  return s.replace(/[\u3041-\u3096]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
+}
+function headN(s, n) { return normalizeKana(s).slice(0, n); }
+function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+/* ===== ハイリスク薬判定 ===== */
+const HIGH_RISK_PATTERNS = [
+  /インスリン|insulin/i,
+  /ワーファリン|ワルファリン|warfarin/i,
+  /エリキュース|アピキサバン|apixaban/i,
+  /イグザレルト|リバーロキサバン|rivaroxaban/i,
+  /プラザキサ|ダビガトラン|dabigatran/i,
+  /リクシアナ|エドキサバン|edoxaban/i,
+  /ヘパリン|heparin/i,
+  /メトホルミン|metformin/i,
+  /ジゴキシン|digoxin/i,
+  /テオフィリン|theophylline/i,
+  /リチウム|lithium/i,
+];
+
+function isHighRisk(item) {
+  const s = (item.hanbai + ' ' + item.ippan).toLowerCase();
+  return HIGH_RISK_PATTERNS.some(p => p.test(s));
 }
 
-/* ======= Data / Index（安全パッチ版） ======= */
-let rows=[], idx=new Map();
-function buildIndex(){
-  idx.clear();
-  rows.forEach(r=>{
-    // フリガナが空なら販売名を元にカナ化して採用
-    const kanaSource = (r.kana && r.kana.trim()) ? r.kana : r.hanbai;
-    const base = normalizeKana(kanaSource);
-    [3,4,5].forEach(n=>{
-      const k = base.slice(0,n);
-      if(k.length===n){
-        if(!idx.has(k)) idx.set(k,[]);
-        idx.get(k).push(r);
+function isInsulin(item) {
+  const s = (item.hanbai + ' ' + item.ippan).toLowerCase();
+  return s.includes('インスリン') || s.includes('insulin') || 
+         /グラルギン|デグルデク|ヒューマログ|ノボ|アスパルト|リスプロ|ミックス|ランタス|トレシーバ/i.test(s);
+}
+
+function isBasalInsulin(item) {
+  return /グラルギン|デグルデク|トレシーバ|ランタス/i.test(item.hanbai + item.ippan);
+}
+
+/* ===== データパース ===== */
+function parseCSV(text) {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    if (i === 0 && /フリガナ|販売名/i.test(cols.join(''))) continue;
+    out.push({ kana: cols[0] || '', hanbai: cols[1] || '', ippan: cols[2] || '' });
+  }
+  return out;
+}
+
+function parseInstitutions(csv) {
+  const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const c = lines[i].split(',');
+    if (i === 0 && /id|name/i.test(c.join(''))) continue;
+    const name = (c[1] || '').trim();
+    if (name) out.push({ id: c[0], name, norm: name.normalize('NFKC') });
+  }
+  return out;
+}
+
+/* ===== 状態管理 ===== */
+let allMeds = [];
+let institutions = [];
+let prefixIndex = new Map();
+
+let stable = JSON.parse(localStorage.getItem('mp_stable') || '[]');
+let favorites = JSON.parse(localStorage.getItem('mp_favorites') || '[]');
+let recentUsed = JSON.parse(localStorage.getItem('mp_recent') || '[]');
+let currentTab = 'search';
+let currentInst = localStorage.getItem('mp_current_inst') || '';
+
+let pendingItem = null;
+let pendingEditIndex = null;
+
+/* ===== インデックス構築 ===== */
+function buildIndex() {
+  prefixIndex.clear();
+  for (const r of allMeds) {
+    for (let n = 3; n <= 5; n++) {
+      const k = headN(r.kana, n);
+      if (k.length === n) {
+        if (!prefixIndex.has(k)) prefixIndex.set(k, []);
+        prefixIndex.get(k).push(r);
       }
-    });
-  });
-  const st=$("#stat"); if(st) st.textContent=`読込: ${rows.length} 行 / 接頭辞: ${idx.size}`;
+    }
+  }
 }
 
-/* ======= 判定 ======= */
-function isSyrup(item){ return /シロップ/i.test(item.hanbai); }
-function isInsulin(item){
-  const s=(item.hanbai+' '+item.ippan);
-  return /インスリン|グラルギン|デグルデク|トレシーバ|ランタス|ヒューマログ|ノボ|ミックス/i.test(s);
-}
-function isBasalInsulin(item){ return /グラルギン|デグルデク|トレシーバ|ランタス/i.test(item.hanbai+' '+item.ippan); }
+/* ===== 永続化 ===== */
+function saveStable() { localStorage.setItem('mp_stable', JSON.stringify(stable)); }
+function saveFavorites() { localStorage.setItem('mp_favorites', JSON.stringify(favorites)); }
+function saveRecent() { localStorage.setItem('mp_recent', JSON.stringify(recentUsed)); }
+function saveCurrentInst() { localStorage.setItem('mp_current_inst', currentInst); }
 
-/* ======= ステッパ（＋／−は整数、手入力は小数可） ======= */
-function makeStepper(id, init=1, placeholder='', unitLabel=''){
-  const wrap=document.createElement('div');
-  wrap.style.display='grid'; wrap.style.gridTemplateColumns='auto 1fr auto'; wrap.style.alignItems='center'; wrap.style.gap='8px';
-  const m=Object.assign(document.createElement('button'),{type:'button',className:'btn',textContent:'−'});
-  const i=Object.assign(document.createElement('input'),{id,type:'number',value:init,step:'1',placeholder});
-  const p=Object.assign(document.createElement('button'),{type:'button',className:'btn',textContent:'＋'});
-  const u=document.createElement('span'); u.textContent=unitLabel; u.style.marginLeft='6px'; u.style.minWidth='3em';
-  m.onclick=()=>{ let v=parseFloat(i.value||'0'); if(isNaN(v)) v=0; i.value=Math.max(0, Math.floor(v)-1); };
-  p.onclick=()=>{ let v=parseFloat(i.value||'0'); if(isNaN(v)) v=0; i.value=Math.floor(v)+1; };
-  const row=document.createElement('div'); row.style.display='flex'; row.style.alignItems='center';
-  row.append(wrap, u);
-  wrap.append(m,i,p);
-  return {row, input:i};
+function addToRecent(item) {
+  const key = item.hanbai;
+  recentUsed = recentUsed.filter(r => r.hanbai !== key);
+  recentUsed.unshift(item);
+  if (recentUsed.length > 20) recentUsed.pop();
+  saveRecent();
 }
 
-/* ======= 富士通風 UI ======= */
-function buildFujitsuUI(item, existing){
-  const host=document.createElement('div'); host.style.display='grid'; host.style.gap='10px';
+function toggleFavorite(item) {
+  const idx = favorites.findIndex(f => f.hanbai === item.hanbai);
+  if (idx >= 0) {
+    favorites.splice(idx, 1);
+  } else {
+    favorites.push(item);
+  }
+  saveFavorites();
+}
 
-  // 1) 量（錠／mL／単位）
-  let qtyUI;
-  if(isInsulin(item)){
-    // 下の特別UIで設定
-  }else if(isSyrup(item)){
-    qtyUI = makeStepper('qty', existing?.qty ?? 5, 'mL', 'mL');
-    const label=document.createElement('div'); label.textContent='量（mL）'; label.style.color='#64748b';
-    host.append(label, qtyUI.row);
-  }else{
-    qtyUI = makeStepper('qty', existing?.qty ?? 1, '錠', '錠');
-    const label=document.createElement('div'); label.textContent='錠数（整数ボタン＋必要時は直接入力で0.5等）'; label.style.color='#64748b';
-    host.append(label, qtyUI.row);
+function isFavorite(item) {
+  return favorites.some(f => f.hanbai === item.hanbai);
+}
+
+/* ===== 五十音 ===== */
+const BASE = [["ア","イ","ウ","エ","オ"],["カ","キ","ク","ケ","コ"],["サ","シ","ス","セ","ソ"],["タ","チ","ツ","テ","ト"],["ナ","ニ","ヌ","ネ","ノ"],["ハ","ヒ","フ","ヘ","ホ"],["マ","ミ","ム","メ","モ"],["ヤ","—","ユ","—","ヨ"],["ラ","リ","ル","レ","ロ"],["ワ","—","—","—","ン"]];
+const DAKU = [["ガ","ギ","グ","ゲ","ゴ"],["ザ","ジ","ズ","ゼ","ゾ"],["ダ","ヂ","ヅ","デ","ド"],["バ","ビ","ブ","ベ","ボ"],["パ","ピ","プ","ペ","ポ"]];
+const SMALL = ["ャ","ュ","ョ","ァ","ィ","ゥ","ェ","ォ","ッ","ー"];
+
+let kanaSlots = ["","","","",""];
+let activeSlot = 0;
+
+function renderKanaBoard() {
+  const boxes = $('#kanaBoxes');
+  boxes.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'box' + (i === activeSlot ? ' active' : '');
+    d.textContent = kanaSlots[i] || '□';
+    d.onclick = () => { activeSlot = i; renderKanaBoard(); };
+    boxes.appendChild(d);
   }
 
-  // 2) 分（1〜4）
-  const bunRow=document.createElement('div'); bunRow.style.display='flex'; bunRow.style.gap='8px'; bunRow.style.alignItems='center';
-  const bunLabel=document.createElement('span'); bunLabel.textContent='分';
-  const bunSel=document.createElement('select'); ["1","2","3","4"].forEach(n=>{ const op=document.createElement('option'); op.textContent=n; bunSel.appendChild(op); });
-  bunSel.value = existing?.bun ?? "1";
-  bunRow.append(bunLabel, bunSel); host.appendChild(bunRow);
-
-  // 3) 時間帯（分1のときのみ）
-  const onceWrap=document.createElement('div'); onceWrap.style.display='flex'; onceWrap.style.flexWrap='wrap'; onceWrap.style.gap='8px';
-  const onceLabel=document.createElement('div'); onceLabel.textContent='時間帯（分1のとき）'; onceLabel.style.color='#64748b';
-  ["朝","昼","夕","就寝前"].forEach(t=>{
-    const b=document.createElement('button'); b.type='button'; b.className='btn'; b.textContent=t;
-    if(existing?.onceT===t) b.classList.add('primary');
-    b.onclick=()=>{ [...onceWrap.children].forEach(x=>x.classList.remove('primary')); b.classList.add('primary'); onceWrap.setAttribute('data-val', t); };
-    onceWrap.appendChild(b);
-  });
-  if(existing?.onceT) onceWrap.setAttribute('data-val', existing.onceT);
-  const onceBlock=document.createElement('div'); onceBlock.append(onceLabel, onceWrap); host.appendChild(onceBlock);
-
-  // 4) 食事との関係
-  const mealRow=document.createElement('div'); mealRow.style.display='flex'; mealRow.style.gap='8px'; mealRow.style.alignItems='center';
-  const mealLabel=document.createElement('span'); mealLabel.textContent='食事との関係';
-  const mealSel=document.createElement('select'); ["（指定なし）","食前","食後"].forEach(v=>{ const op=document.createElement('option'); op.textContent=v; mealSel.appendChild(op); });
-  mealSel.value = existing?.meal ?? "（指定なし）";
-  mealRow.append(mealLabel, mealSel); host.appendChild(mealRow);
-
-  // 5) インスリン特別UI
-  let insulinUI=null;
-  if(isInsulin(item)){
-    const h=document.createElement('div'); h.textContent='インスリン用量'; h.style.color='#64748b';
-    const wrap=document.createElement('div'); wrap.style.display='grid'; wrap.style.gap='8px';
-    if(isBasalInsulin(item)){ // 持効型：眠前のみ
-      const step = makeStepper('insBed', existing?.insulin?.bed ?? 0, '単位', '単位');
-      const row=document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px';
-      const lab=document.createElement('span'); lab.textContent='眠前';
-      row.append(lab, step.row); wrap.appendChild(row);
-      insulinUI = {type:'basal', sBed: step};
-      bunSel.value = "1"; onceWrap.setAttribute('data-val','就寝前'); // 分1固定＆眠前
-    }else{ // 配合・超速効：朝昼夕
-      const sM = makeStepper('insM', existing?.insulin?.morn ?? 0, '単位', '単位');
-      const sL = makeStepper('insL', existing?.insulin?.noon ?? 0, '単位', '単位');
-      const sD = makeStepper('insD', existing?.insulin?.eve  ?? 0, '単位', '単位');
-      const mk=(lbl,st)=>{ const r=document.createElement('div'); r.style.display='flex'; r.style.alignItems='center'; r.style.gap='8px'; const lb=document.createElement('span'); lb.textContent=lbl; r.append(lb, st.row); return r; };
-      wrap.append(mk('朝',sM), mk('昼',sL), mk('夕',sD));
-      insulinUI = {type:'rapid', sM, sL, sD};
-    }
-    host.append(h, wrap);
-  }
-
-  // 分の切替で時間帯UIを制御
-  const updateOnceVisible=()=>{
-    const enable = bunSel.value === "1";
-    onceBlock.style.display = enable ? '' : 'none';
-    if(!enable){ onceWrap.removeAttribute('data-val'); }
-  };
-  updateOnceVisible();
-  bunSel.onchange=updateOnceVisible;
-
-  return {
-    host,
-    getRec: ()=>{
-      // 量
-      let qty = 0, unit='';
-      if(isInsulin(item)){
-        unit='単位';
-      }else if(isSyrup(item)){
-        qty = parseFloat(document.getElementById('qty')?.value||'0')||0; unit='mL';
-      }else{
-        qty = parseFloat(document.getElementById('qty')?.value||'0')||0; unit='錠';
-      }
-      // インスリン
-      let insulin=null;
-      if(isInsulin(item)){
-        if(insulinUI?.type==='basal'){
-          const v=parseFloat(document.getElementById('insBed')?.value||'0')||0;
-          insulin={type:'basal', bed:v};
-        }else if(insulinUI?.type==='rapid'){
-          const m=parseFloat(document.getElementById('insM')?.value||'0')||0;
-          const l=parseFloat(document.getElementById('insL')?.value||'0')||0;
-          const d=parseFloat(document.getElementById('insD')?.value||'0')||0;
-          insulin={type:'rapid', morn:m, noon:l, eve:d};
-        }
-      }
-      const bun = bunSel.value;
-      const onceT = onceWrap.getAttribute('data-val') || '';
-      const meal = mealSel.value==='（指定なし）' ? '' : mealSel.value;
-      return { qty, unit, bun, onceT, meal, insulin };
-    }
-  };
-}
-
-/* ======= 状態 ======= */
-let tray=[], stable=[];
-
-/* ======= ダイアログ ======= */
-let pending=null;
-function openDialog(item, existing=null, index=null){
-  pending={item, existing, index};
-  $("#dlgTitle").textContent=item.hanbai;
-  const area=$("#fujitsuArea"); area.innerHTML='';
-  const ui=buildFujitsuUI(item, existing);
-  area.appendChild(ui.host);
-
-  // 既定値
-  $("#note").value = existing?.note || '';
-  $("#inst").value = existing?.inst || localStorage.getItem('mp_last_inst') || '';
-
-  $("#dlgOk").onclick=()=>{
-    const spec = ui.getRec();
-    const rec = {
-      item,
-      qty: spec.qty,
-      unit: spec.unit || (isInsulin(item)?'単位': isSyrup(item)?'mL':'錠'),
-      bun: spec.bun,
-      onceT: spec.onceT,
-      meal: spec.meal,
-      insulin: spec.insulin,
-      note: $("#note").value || '',
-      inst: $("#inst").value || '',
-      status:'keep'
+  const grid = $('#kanaGrid');
+  grid.innerHTML = '';
+  const label = t => { const d = document.createElement('div'); d.className = 'grp'; d.textContent = t; grid.appendChild(d); };
+  const kbtn = k => {
+    const btn = document.createElement('button');
+    btn.textContent = k === '—' ? '' : k;
+    btn.disabled = k === '—';
+    btn.onclick = () => {
+      kanaSlots[activeSlot] = k;
+      if (activeSlot < 4) activeSlot++;
+      reflectKanaToSearch();
+      renderKanaBoard();
     };
-    if(rec.inst){ localStorage.setItem('mp_last_inst', rec.inst); }
-    if(pending.existing){ tray[pending.index]=rec; } else { tray.push(rec); }
-    $("#dlg").close(); renderTray();
+    return btn;
   };
-  $("#dlgCancel").onclick=()=>$("#dlg").close();
-  $("#dlg").showModal();
+
+  label('清音');
+  BASE.forEach(row => row.forEach(k => grid.appendChild(kbtn(k))));
+  label('濁音・半濁音');
+  DAKU.forEach(row => row.forEach(k => grid.appendChild(kbtn(k))));
+  label('小書き・長音');
+  SMALL.forEach(k => grid.appendChild(kbtn(k)));
 }
 
-/* ======= 候補（安全パッチ込み） ======= */
-function renderCand(){
-  const q=$("#qFree").value.trim(); const ul=$("#cand"); ul.innerHTML='';
-  const qNorm = normalizeKana(q);
-  let hits = [];
+$('#kanaBack').onclick = () => {
+  if (activeSlot > 0 && !kanaSlots[activeSlot]) activeSlot--;
+  kanaSlots[activeSlot] = '';
+  reflectKanaToSearch();
+  renderKanaBoard();
+};
 
-  if(qNorm.length >= 3){
-    const key = [5,4,3].map(n => qNorm.slice(0,n)).find(k => idx.has(k));
-    if(key){ hits = idx.get(key); }
-  }
-  // 救済：インデックス不発 or 3文字未満 → 部分一致
-  if(hits.length === 0){
-    hits = rows.filter(r=>{
-      const kana = normalizeKana((r.kana && r.kana.trim()) ? r.kana : r.hanbai);
-      return (
-        (qNorm && kana.includes(qNorm)) ||
-        (q && (r.hanbai||'').includes(q)) ||
-        (q && (r.ippan||'').includes(q))
-      );
-    }).slice(0,300);
-  }
+$('#kanaClear').onclick = () => {
+  kanaSlots = ["","","","",""];
+  activeSlot = 0;
+  reflectKanaToSearch();
+  renderKanaBoard();
+};
 
-  if(!q){ ul.innerHTML='<li class="item"><span style="color:#64748b">フリガナ3文字以上で絞り込み。未入力時は部分一致でざっくり表示。</span></li>'; return; }
-  if(hits.length===0){ ul.innerHTML='<li class="item">該当なし</li>'; return; }
+$('#searchInput').oninput = () => {
+  const s = normalizeKana($('#searchInput').value).slice(0, 5);
+  kanaSlots = ["","","","",""];
+  for (let i = 0; i < s.length; i++) kanaSlots[i] = s[i];
+  activeSlot = Math.min(s.length, 4);
+  currentTab = 'search';
+  renderTabs();
+  renderCandidates();
+  renderKanaBoard();
+};
 
-  hits.forEach(r=>{
-    const li=document.createElement('li'); li.className='item';
-    li.innerHTML=`<div><div class="name">${escapeHtml(r.hanbai)}</div><div class="sub">${escapeHtml(r.ippan||'')}</div></div>
-                  <button class="btn">選択</button>`;
-    li.querySelector('.btn').onclick=()=>openDialog(r);
-    ul.appendChild(li);
+function reflectKanaToSearch() {
+  const s = kanaSlots.join('');
+  $('#searchInput').value = s;
+  currentTab = 'search';
+  renderTabs();
+  renderCandidates();
+}
+
+/* ===== タブ切り替え ===== */
+$$('.tabs button').forEach(btn => {
+  btn.onclick = () => {
+    currentTab = btn.dataset.tab;
+    renderTabs();
+    renderCandidates();
+  };
+});
+
+function renderTabs() {
+  $$('.tabs button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === currentTab);
   });
 }
 
-/* ======= トレー ======= */
-function formatTrayLine(t){
-  if(isInsulin(t.item)){
-    if(t.insulin?.type==='basal'){
-      return `分1 眠前 ${t.insulin.bed||0}単位${t.note? ' '+t.note:''}`;
-    }else{
-      return `朝${t.insulin?.morn||0}単位 昼${t.insulin?.noon||0}単位 夕${t.insulin?.eve||0}単位${t.note? ' '+t.note:''}`;
+/* ===== 候補リスト描画 ===== */
+function renderCandidates() {
+  const ul = $('#candidateList');
+  ul.innerHTML = '';
+
+  let items = [];
+
+  if (currentTab === 'search') {
+    const q = $('#searchInput').value.trim();
+    if (q.length >= 3) {
+      const key = headN(q, Math.min(q.length, 5));
+      items = (prefixIndex.get(key) || []).slice(0, 100);
+    } else if (q.length > 0) {
+      ul.innerHTML = '<li class="empty"><div class="empty-icon">🔤</div><div class="empty-text">3文字以上入力してください</div></li>';
+      return;
+    } else {
+      ul.innerHTML = '<li class="empty"><div class="empty-icon">🔍</div><div class="empty-text">薬名をカナで検索</div></li>';
+      return;
     }
-  }else{
-    const parts=[];
-    if(t.qty) parts.push(`${t.qty}${t.unit||''}`);
-    if(t.bun) parts.push(`分${t.bun}`);
-    if(t.onceT) parts.push(t.onceT);
-    if(t.meal) parts.push(t.meal);
-    if(t.note) parts.push(t.note);
-    return parts.join(' ');
+  } else if (currentTab === 'fav') {
+    items = favorites;
+    if (items.length === 0) {
+      ul.innerHTML = '<li class="empty"><div class="empty-icon">⭐</div><div class="empty-text">お気に入りはまだありません<br>薬を追加する際に★をタップ</div></li>';
+      return;
+    }
+  } else if (currentTab === 'recent') {
+    items = recentUsed;
+    if (items.length === 0) {
+      ul.innerHTML = '<li class="empty"><div class="empty-icon">🕐</div><div class="empty-text">最近使った薬はまだありません</div></li>';
+      return;
+    }
   }
-}
-function renderTray(){
-  const ul=$("#tray"); ul.innerHTML='';
-  tray.forEach((t,i)=>{
-    const li=document.createElement('li'); li.className='item';
-    li.innerHTML=`<div><div class="name">${escapeHtml(t.item.hanbai)}</div><div class="sub">${escapeHtml(formatTrayLine(t))}${t.inst? ' 【'+escapeHtml(t.inst)+'】':''}</div></div>
-                  <div style="display:flex;gap:6px">
-                    <button class="btn" data-edit>編集</button>
-                    <button class="btn" data-del>削除</button>
-                  </div>`;
-    li.querySelector('[data-edit]').onclick=()=>openDialog(t.item,t,i);
-    li.querySelector('[data-del]').onclick=()=>{ tray.splice(i,1); renderTray(); };
+
+  if (items.length === 0) {
+    ul.innerHTML = '<li class="empty"><div class="empty-icon">😕</div><div class="empty-text">該当する薬が見つかりません</div></li>';
+    return;
+  }
+
+  items.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'list-item' + (isHighRisk(item) ? ' highrisk' : '');
+
+    const favClass = isFavorite(item) ? ' active' : '';
+
+    li.innerHTML = `
+      <div class="info">
+        <div class="name">${escapeHtml(item.hanbai)}</div>
+        <div class="sub">${escapeHtml(item.ippan)} ${isHighRisk(item) ? '⚠️' : ''}</div>
+      </div>
+      <div class="actions">
+        <button class="btn sm icon fav${favClass}" data-fav title="お気に入り">⭐</button>
+        <button class="btn sm primary" data-add>追加</button>
+      </div>
+    `;
+
+    li.querySelector('[data-fav]').onclick = e => {
+      e.stopPropagation();
+      toggleFavorite(item);
+      renderCandidates();
+    };
+
+    li.querySelector('[data-add]').onclick = () => openDoseDialog(item);
+
     ul.appendChild(li);
   });
 }
 
-/* ======= 常用薬（施設グループ・↑↓並替・継続/中止） ======= */
-function renderStable(){
-  const box=$("#stable"); box.innerHTML='';
-  if(stable.length===0){ box.textContent='ここに常用薬が並びます'; return; }
+/* ===== 常用薬リスト描画 ===== */
+function renderStable() {
+  const box = $('#stableList');
+  box.innerHTML = '';
 
-  // 施設ごと
-  const groups={};
-  stable.forEach((s,i)=>{ const key=s.inst||'施設不明'; if(!groups[key]) groups[key]=[]; groups[key].push({...s, _i:i}); });
+  if (stable.length === 0) {
+    box.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">常用薬リストは空です<br>左から薬を追加してください</div></div>';
+    return;
+  }
 
-  Object.keys(groups).forEach(inst=>{
-    const head=document.createElement('div'); head.className='facility'; head.textContent=inst; box.appendChild(head);
-    groups[inst].forEach(s=>{
-      const row=document.createElement('div'); row.className='chip '+(s.status==='stop'?'stop':'keep');
-      const body=formatTrayLine(s); // スラッシュなし
-      row.innerHTML=`
-        <span>${s.status==='keep'?'●':'◯'}</span>
-        <span class="text">${escapeHtml(s.item.hanbai)} ${escapeHtml(body)}</span>
-        <div class="ops">
-          <button class="btn" data-up>↑</button>
-          <button class="btn" data-down>↓</button>
-          <button class="btn" data-toggle>${s.status==='keep'?'中止':'継続'}</button>
-          <button class="btn" data-del>削除</button>
+  // 施設ごとにグループ化
+  const groups = new Map();
+  const order = [];
+  stable.forEach((s, idx) => {
+    const inst = s.rec.inst?.trim() || '（施設未指定）';
+    if (!groups.has(inst)) { groups.set(inst, []); order.push(inst); }
+    groups.get(inst).push({ ...s, idx });
+  });
+
+  order.forEach(inst => {
+    const header = document.createElement('div');
+    header.className = 'inst-header';
+    header.textContent = '🏥 ' + inst;
+    box.appendChild(header);
+
+    groups.get(inst).forEach(s => {
+      const chip = document.createElement('div');
+      chip.className = 'med-chip animate-in' + (s.status === 'stop' ? ' stop' : '') + (isHighRisk(s.rec.item) ? ' highrisk' : '');
+
+      const line = buildDisplayLine(s.rec);
+
+      chip.innerHTML = `
+        <span class="badge ${s.status}">${s.status === 'keep' ? '継続' : '中止'}</span>
+        <div class="chip-text">${escapeHtml(line)}${s.status === 'stop' ? ' ×××' : ''}</div>
+        <div class="chip-actions">
+          <button class="btn" data-up title="上へ">↑</button>
+          <button class="btn" data-down title="下へ">↓</button>
+          <button class="btn" data-toggle>${s.status === 'keep' ? '中止' : '継続'}</button>
+          <button class="btn" data-del title="削除">🗑</button>
         </div>
       `;
-      row.querySelector('[data-up]').onclick=()=>{ if(s._i>0){ [stable[s._i-1],stable[s._i]]=[stable[s._i],stable[s._i-1]]; renderStable(); } };
-      row.querySelector('[data-down]').onclick=()=>{ if(s._i<stable.length-1){ [stable[s._i+1],stable[s._i]]=[stable[s._i],stable[s._i+1]]; renderStable(); } };
-      row.querySelector('[data-toggle]').onclick=()=>{ stable[s._i].status = (stable[s._i].status==='keep'?'stop':'keep'); renderStable(); };
-      row.querySelector('[data-del]').onclick=()=>{ stable.splice(s._i,1); renderStable(); };
-      box.appendChild(row);
+
+      chip.querySelector('[data-up]').onclick = () => {
+        if (s.idx > 0) { [stable[s.idx], stable[s.idx - 1]] = [stable[s.idx - 1], stable[s.idx]]; saveStable(); renderStable(); }
+      };
+      chip.querySelector('[data-down]').onclick = () => {
+        if (s.idx < stable.length - 1) { [stable[s.idx], stable[s.idx + 1]] = [stable[s.idx + 1], stable[s.idx]]; saveStable(); renderStable(); }
+      };
+      chip.querySelector('[data-toggle]').onclick = () => {
+        stable[s.idx].status = stable[s.idx].status === 'keep' ? 'stop' : 'keep';
+        saveStable();
+        renderStable();
+      };
+      chip.querySelector('[data-del]').onclick = () => confirmAction('この薬を削除しますか？', () => {
+        stable.splice(s.idx, 1);
+        saveStable();
+        renderStable();
+      });
+
+      box.appendChild(chip);
     });
   });
 }
 
-/* ======= 追加・コピー ======= */
-document.getElementById('trayCommit').onclick=()=>{
-  tray.forEach(t=>stable.push({...t}));
-  tray=[]; renderTray(); renderStable();
+function buildDisplayLine(rec) {
+  const parts = [rec.item.hanbai];
+  if (isInsulin(rec.item)) {
+    if (rec.insulin?.type === 'basal') {
+      parts.push('眠前 ' + (rec.insulin.bed || 0) + '単位');
+    } else {
+      parts.push('朝' + (rec.insulin?.morn || 0) + ' 昼' + (rec.insulin?.noon || 0) + ' 夕' + (rec.insulin?.eve || 0) + '単位');
+    }
+  } else {
+    parts.push((rec.qty || 0) + (rec.unit || '錠'));
+    if (rec.bun) parts.push('分' + rec.bun);
+    if (rec.timing && rec.timing !== '（指定なし）') parts.push(rec.timing);
+    if (rec.meal && rec.meal !== '（指定なし）') parts.push(rec.meal);
+  }
+  if (rec.note) parts.push(rec.note);
+  return parts.join(' / ');
+}
+
+function buildCopyLine(rec, stopped) {
+  const mark = stopped ? '○' : '●';
+  const parts = [rec.item.hanbai];
+  if (isInsulin(rec.item)) {
+    if (rec.insulin?.type === 'basal') {
+      parts.push('分1', '眠前', (rec.insulin.bed || 0) + '単位');
+    } else {
+      parts.push('朝' + (rec.insulin?.morn || 0) + '単位', '昼' + (rec.insulin?.noon || 0) + '単位', '夕' + (rec.insulin?.eve || 0) + '単位');
+    }
+  } else {
+    parts.push((rec.qty || 0) + (rec.unit || '錠'));
+    if (rec.bun) parts.push('分' + rec.bun);
+    if (rec.timing && rec.timing !== '（指定なし）') parts.push(rec.timing);
+    if (rec.meal && rec.meal !== '（指定なし）') parts.push(rec.meal);
+    if (rec.note) parts.push(rec.note);
+  }
+  if (stopped) parts.push('中止！');
+  return mark + parts.join(' ');
+}
+
+/* ===== 用法ダイアログ ===== */
+function openDoseDialog(item, existingRec = null, editIndex = null) {
+  pendingItem = item;
+  pendingEditIndex = editIndex;
+
+  const dlg = $('#doseDialog');
+  $('#dlgTitle').textContent = item.hanbai;
+  $('#dlgHighrisk').style.display = isHighRisk(item) ? 'block' : 'none';
+
+  const isIns = isInsulin(item);
+  const isBasal = isBasalInsulin(item);
+
+  $('#normalDoseArea').style.display = isIns ? 'none' : 'block';
+  $('#insulinDoseArea').style.display = isIns ? 'block' : 'none';
+  $('#insulinRapidRow').style.display = isIns && !isBasal ? 'flex' : 'none';
+  $('#insulinBasalRow').style.display = isIns && isBasal ? 'flex' : 'none';
+
+  // フォームリセット
+  if (existingRec) {
+    $('#qty').value = existingRec.qty || 1;
+    $('#unit').value = existingRec.unit || '錠';
+    $('#bun').value = existingRec.bun || '1';
+    $('#timing').value = existingRec.timing || '（指定なし）';
+    $('#meal').value = existingRec.meal || '（指定なし）';
+    $('#note').value = existingRec.note || '';
+    if (existingRec.insulin) {
+      $('#insM').value = existingRec.insulin.morn || 0;
+      $('#insL').value = existingRec.insulin.noon || 0;
+      $('#insD').value = existingRec.insulin.eve || 0;
+      $('#insBed').value = existingRec.insulin.bed || 0;
+    }
+  } else {
+    $('#qty').value = 1;
+    $('#unit').value = '錠';
+    $('#bun').value = '1';
+    $('#timing').value = '（指定なし）';
+    $('#meal').value = '（指定なし）';
+    $('#note').value = '';
+    $('#insM').value = 0;
+    $('#insL').value = 0;
+    $('#insD').value = 0;
+    $('#insBed').value = 0;
+  }
+
+  // お気に入りボタン更新
+  $('#dlgFav').textContent = isFavorite(item) ? '★ お気に入り解除' : '☆ お気に入り';
+  $('#dlgFav').classList.toggle('active', isFavorite(item));
+
+  dlg.showModal();
+}
+
+// クイック追加
+$$('[data-quick]').forEach(btn => {
+  btn.onclick = () => {
+    const k = btn.dataset.quick;
+    if (k === 'morn') { $('#qty').value = 1; $('#bun').value = '1'; $('#timing').value = '朝'; $('#meal').value = '（指定なし）'; }
+    if (k === 'eve') { $('#qty').value = 1; $('#bun').value = '1'; $('#timing').value = '夕'; $('#meal').value = '（指定なし）'; }
+    if (k === 'bid') { $('#qty').value = 2; $('#bun').value = '2'; $('#timing').value = '朝夕'; $('#meal').value = '（指定なし）'; }
+    if (k === 'tid') { $('#qty').value = 3; $('#bun').value = '3'; $('#timing').value = '朝昼夕'; $('#meal').value = '食後'; }
+    if (k === 'bed') { $('#qty').value = 1; $('#bun').value = '1'; $('#timing').value = '眠前'; $('#meal').value = '（指定なし）'; }
+  };
+});
+
+// ステッパー
+$('#qtyMinus').onclick = () => { const i = $('#qty'); i.value = Math.max(0, (parseInt(i.value) || 0) - 1); };
+$('#qtyPlus').onclick = () => { const i = $('#qty'); i.value = (parseInt(i.value) || 0) + 1; };
+$('#insBasalMinus').onclick = () => { const i = $('#insBed'); i.value = Math.max(0, (parseInt(i.value) || 0) - 1); };
+$('#insBasalPlus').onclick = () => { const i = $('#insBed'); i.value = (parseInt(i.value) || 0) + 1; };
+
+// お気に入り
+$('#dlgFav').onclick = () => {
+  toggleFavorite(pendingItem);
+  $('#dlgFav').textContent = isFavorite(pendingItem) ? '★ お気に入り解除' : '☆ お気に入り';
+  $('#dlgFav').classList.toggle('active', isFavorite(pendingItem));
+  renderCandidates();
 };
 
-async function copyTextIOSCompat(text){
-  try{ await navigator.clipboard.writeText(text); showToast('コピーしました'); }
-  catch{
-    const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
-    document.body.appendChild(ta); ta.focus(); ta.select(); const ok=document.execCommand('copy'); document.body.removeChild(ta);
-    showToast(ok? 'コピーしました':'コピーできませんでした');
+// キャンセル
+$('#dlgCancel').onclick = () => $('#doseDialog').close();
+
+// OK
+$('#dlgOk').onclick = () => {
+  const isIns = isInsulin(pendingItem);
+  const isBasal = isBasalInsulin(pendingItem);
+
+  let rec = {
+    item: pendingItem,
+    qty: parseInt($('#qty').value) || 0,
+    unit: $('#unit').value,
+    bun: $('#bun').value,
+    timing: $('#timing').value,
+    meal: $('#meal').value,
+    note: $('#note').value,
+    inst: currentInst,
+    insulin: null
+  };
+
+  if (isIns) {
+    if (isBasal) {
+      rec.insulin = { type: 'basal', bed: parseInt($('#insBed').value) || 0 };
+    } else {
+      rec.insulin = {
+        type: 'rapid',
+        morn: parseInt($('#insM').value) || 0,
+        noon: parseInt($('#insL').value) || 0,
+        eve: parseInt($('#insD').value) || 0
+      };
+    }
+    rec.unit = '単位';
+  }
+
+  if (pendingEditIndex !== null) {
+    stable[pendingEditIndex].rec = rec;
+  } else {
+    stable.push({ rec, status: 'keep' });
+    addToRecent(pendingItem);
+  }
+
+  saveStable();
+  renderStable();
+  renderCandidates();
+  $('#doseDialog').close();
+  toast('追加しました', true);
+};
+
+/* ===== 確認ダイアログ ===== */
+let confirmCallback = null;
+
+function confirmAction(msg, callback) {
+  $('#confirmMsg').textContent = msg;
+  confirmCallback = callback;
+  $('#confirmDialog').showModal();
+}
+
+$('#confirmNo').onclick = () => $('#confirmDialog').close();
+$('#confirmYes').onclick = () => {
+  $('#confirmDialog').close();
+  if (confirmCallback) confirmCallback();
+};
+
+/* ===== 全削除 ===== */
+$('#clearAll').onclick = () => {
+  if (stable.length === 0) return;
+  confirmAction('常用薬リストを全て削除しますか？', () => {
+    stable = [];
+    saveStable();
+    renderStable();
+    toast('全て削除しました');
+  });
+};
+
+/* ===== コピー ===== */
+async function copyStableToClipboard() {
+  if (stable.length === 0) {
+    return false;
+  }
+
+  const groups = new Map();
+  const order = [];
+  stable.forEach(s => {
+    const inst = s.rec.inst?.trim() || '（施設未指定）';
+    if (!groups.has(inst)) { groups.set(inst, []); order.push(inst); }
+    groups.get(inst).push(s);
+  });
+
+  const lines = [];
+  order.forEach(inst => {
+    lines.push('【' + inst + '】');
+    groups.get(inst).forEach(s => {
+      lines.push(buildCopyLine(s.rec, s.status === 'stop'));
+    });
+    lines.push('');
+  });
+
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = lines.join('\n');
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    return true;
   }
 }
 
-document.getElementById('copyAll').onclick=()=>{
-  const groups={};
-  stable.forEach(s=>{ const key=s.inst||'施設不明'; if(!groups[key]) groups[key]=[]; groups[key].push(s); });
-  const lines=[];
-  Object.keys(groups).forEach(inst=>{
-    lines.push(`【${inst}】`);
-    groups[inst].forEach(s=>{
-      const body=formatTrayLine(s);
-      lines.push(`${s.status==='keep'?'●':'◯'} ${s.item.hanbai} ${body}`);
-    });
-  });
-  copyTextIOSCompat(lines.join('\n'));
+$('#copyAll').onclick = async () => {
+  if (stable.length === 0) {
+    toast('コピーする内容がありません');
+    return;
+  }
+  const ok = await copyStableToClipboard();
+  if (ok) toast('コピーしました！', true);
 };
 
-/* ======= 初期化（順序厳守） ======= */
-function init(){
-  rows = parseCSV(EMBEDDED_CSV);
-  buildIndex();  // ← rows 読込直後に必ず
-  document.getElementById('qFree').addEventListener('input', renderCand);
-  renderCand();  // ← 空でも一度描画（救済メッセージ）
+/* ===== コピーして次へ ===== */
+$('#copyNext').onclick = async () => {
+  if (stable.length === 0) {
+    toast('コピーする内容がありません');
+    return;
+  }
+  
+  const ok = await copyStableToClipboard();
+  if (ok) {
+    confirmAction('コピーしました！ 次の患者へ進みますか？', () => {
+      stable = [];
+      saveStable();
+      renderStable();
+      
+      $('#searchInput').value = '';
+      kanaSlots = ["","","","",""];
+      activeSlot = 0;
+      renderKanaBoard();
+      
+      currentTab = 'search';
+      renderTabs();
+      renderCandidates();
+      
+      toast('次の患者へ準備完了', true);
+    });
+  }
+};
+
+/* ===== 施設選択（サジェスト方式） ===== */
+let recentInstitutions = JSON.parse(localStorage.getItem('mp_recent_inst') || '[]');
+
+function saveRecentInstitutions() {
+  localStorage.setItem('mp_recent_inst', JSON.stringify(recentInstitutions));
 }
+
+function addToRecentInstitutions(name) {
+  if (!name) return;
+  recentInstitutions = recentInstitutions.filter(n => n !== name);
+  recentInstitutions.unshift(name);
+  if (recentInstitutions.length > 5) recentInstitutions.pop();
+  saveRecentInstitutions();
+}
+
+function initInstitutions() {
+  const input = $('#currentInstInput');
+  input.value = currentInst;
+}
+
+function showInstSuggest(query) {
+  const suggest = $('#instSuggest');
+  suggest.innerHTML = '';
+  
+  const q = (query || '').normalize('NFKC').trim().toLowerCase();
+  let results = [];
+  
+  if (q.length < 2) {
+    if (recentInstitutions.length > 0) {
+      results = recentInstitutions.map(name => ({ name, recent: true }));
+    } else {
+      suggest.classList.remove('show');
+      return;
+    }
+  } else {
+    const matches = institutions.filter(inst => 
+      inst.norm.toLowerCase().includes(q)
+    ).slice(0, 15);
+    
+    const recentMatches = matches.filter(m => recentInstitutions.includes(m.name));
+    const otherMatches = matches.filter(m => !recentInstitutions.includes(m.name));
+    results = [
+      ...recentMatches.map(m => ({ name: m.name, recent: true })),
+      ...otherMatches.map(m => ({ name: m.name, recent: false }))
+    ];
+  }
+  
+  if (results.length === 0) {
+    suggest.classList.remove('show');
+    return;
+  }
+  
+  results.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'inst-suggest-item' + (r.recent ? ' recent' : '');
+    div.textContent = r.name;
+    div.onclick = () => {
+      $('#currentInstInput').value = r.name;
+      currentInst = r.name;
+      saveCurrentInst();
+      addToRecentInstitutions(r.name);
+      suggest.classList.remove('show');
+    };
+    suggest.appendChild(div);
+  });
+  
+  suggest.classList.add('show');
+}
+
+$('#currentInstInput').onfocus = () => {
+  showInstSuggest($('#currentInstInput').value);
+};
+
+$('#currentInstInput').oninput = () => {
+  showInstSuggest($('#currentInstInput').value);
+};
+
+$('#currentInstInput').onblur = () => {
+  setTimeout(() => {
+    $('#instSuggest').classList.remove('show');
+    currentInst = $('#currentInstInput').value;
+    saveCurrentInst();
+    if (currentInst) {
+      addToRecentInstitutions(currentInst);
+    }
+  }, 200);
+};
+
+$('#instClear').onclick = () => {
+  $('#currentInstInput').value = '';
+  currentInst = '';
+  saveCurrentInst();
+  $('#currentInstInput').focus();
+};
+
+/* ===== 初期化 ===== */
+function init() {
+  allMeds = parseCSV(EMBEDDED_CSV);
+  institutions = parseInstitutions(INST_CSV);
+  buildIndex();
+  initInstitutions();
+  renderKanaBoard();
+  renderTabs();
+  renderCandidates();
+  renderStable();
+  $('#stat').textContent = allMeds.length.toLocaleString() + '件';
+}
+
 init();
 </script>
 </body>
